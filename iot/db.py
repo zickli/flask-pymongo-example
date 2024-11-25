@@ -11,7 +11,7 @@ import bson
 
 from flask import current_app, g
 from werkzeug.local import LocalProxy
-from flask_pymongo import PyMongo
+import pymongo
 from pymongo.errors import DuplicateKeyError, OperationFailure
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
@@ -24,14 +24,48 @@ def get_db():
     db = getattr(g, "_database", None)
 
     if db is None:
+        uri = current_app.config.get("MONGO_URI", None)
+        client = pymongo.MongoClient(uri)
+        db = client.spt
 
-        db = g._database = PyMongo(current_app).db
-       
     return db
 
 
 # Use LocalProxy to read the global db instance with just `db`
 db = LocalProxy(get_db)
+
+
+def get_motion_count():
+    result = db.motions.count_documents({})
+    return result
+
+
+def insert_dummy_motion():
+    record = {
+        "device_id": 1,
+        "start_date": "2024-11-25 10:34:23",
+        "end_date": "2024-11-25 10:35:44",
+        "sample_interval": 20,
+        "acc_x": [
+            1.2,
+            2.3,
+            3.4,
+            4.5
+        ],
+        "acc_y": [
+            1.2,
+            2.3,
+            3.4,
+            4.5
+        ],
+        "acc_z": [
+            1.2,
+            2.3,
+            3.4,
+            4.5
+        ]
+    }
+    db.motions.insert_one(record)
 
 
 def get_movies_by_country(countries):
@@ -55,7 +89,7 @@ def get_movies_by_country(countries):
         # and _id. Do not include a limit in your own implementation, it is
         # included here to avoid sending 46000 documents down the wire.
         print(f" c: {countries}")
-        return list(db.movies.find({},{"country" : 1}))
+        return list(db.movies.find({}, {"country": 1}))
 
     except Exception as e:
         return e
@@ -185,7 +219,7 @@ def get_movies(filters, page, movies_per_page):
     total_num_movies = 0
     if page == 0:
         total_num_movies = db.movies.count_documents(query)
- 
+
     movies = cursor.limit(movies_per_page)
 
     return (list(movies), total_num_movies)
@@ -243,7 +277,7 @@ to better understand the task.
 """
 
 
-def add_comment(movie_id,name , email, comment, date):
+def add_comment(movie_id, name, email, comment, date):
     """
     Inserts a comment into the comments collection, with the following fields:
 
@@ -255,8 +289,8 @@ def add_comment(movie_id,name , email, comment, date):
 
     Name and email must be retrieved from the "user" object.
     """
-    
-    comment_doc = { 'movie_id' : movie_id, 'name' : name, 'email' : email,'text' : comment, 'date' : date}
+
+    comment_doc = {'movie_id': movie_id, 'name': name, 'email': email, 'text': comment, 'date': date}
     return db.comments.insert_one(comment_doc)
 
 
@@ -270,8 +304,8 @@ def update_comment(comment_id, user_email, text, date):
     # Use the user_email and comment_id to select the proper comment, then
     # update the "text" and "date" of the selected comment.
     response = db.comments.update_one(
-        { "comment_id": comment_id },
-        { "$set": { "text ": text, "date" : date } }
+        {"comment_id": comment_id},
+        {"$set": {"text ": text, "date": date}}
     )
 
     return response
@@ -283,5 +317,5 @@ def delete_comment(comment_id, user_email):
     collection
     """
 
-    response = db.comments.delete_one( { "_id": ObjectId(comment_id) } )
+    response = db.comments.delete_one({"_id": ObjectId(comment_id)})
     return response

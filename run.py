@@ -1,12 +1,12 @@
 
-from mflix.factory import create_app
+from iot.factory import create_app
 
 import os
 import configparser
 
 
 config = configparser.ConfigParser()
-config.read(os.path.abspath(os.path.join(".ini")))
+config.read(os.path.abspath(os.path.join("sample.ini")))
 
 if __name__ == "__main__":
     app = create_app()

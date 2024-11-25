@@ -1,37 +1,32 @@
 from flask import Blueprint, request, jsonify
-from mflix.db import get_movie, get_movies, get_movies_by_country, \
-    get_movies_faceted, add_comment, update_comment, delete_comment
+from iot.db import *
 
 from flask_cors import CORS
-from mflix.api.utils import expect
+from iot.api.utils import expect
 from datetime import datetime
 
+trainer_api_v1 = Blueprint(
+    'spt_api_v1', 'spt_api_v1', url_prefix='/spt')
 
-movies_api_v1 = Blueprint(
-    'movies_api_v1', 'movies_api_v1', url_prefix='/api/v1/movies')
-
-CORS(movies_api_v1)
+CORS(trainer_api_v1)
 
 
-@movies_api_v1.route('/', methods=['GET'])
-def api_get_movies():
-    MOVIES_PER_PAGE = 20
-
-    (movies, total_num_entries) = get_movies(
-        None, page=0, movies_per_page=MOVIES_PER_PAGE)
-
+@trainer_api_v1.route('/', methods=['GET'])
+def api_get_motions():
     response = {
-        "movies": movies,
-        "page": 0,
-        "filters": {},
-        "entries_per_page": MOVIES_PER_PAGE,
-        "total_results": total_num_entries,
+        "count": get_motion_count(),
     }
 
     return jsonify(response)
 
 
-@movies_api_v1.route('/search', methods=['GET'])
+@trainer_api_v1.route('/insert', methods=['GET'])
+def api_insert():
+    insert_dummy_motion()
+    return jsonify({'success': True}), 200
+
+
+@trainer_api_v1.route('/search', methods=['GET'])
 def api_search_movies():
     DEFAULT_MOVIES_PER_PAGE = 20
 
@@ -73,7 +68,7 @@ def api_search_movies():
     return jsonify(response), 200
 
 
-@movies_api_v1.route('/id/<id>', methods=['GET'])
+@trainer_api_v1.route('/id/<id>', methods=['GET'])
 def api_get_movie_by_id(id):
     movie = get_movie(id)
     if movie is None:
@@ -94,7 +89,7 @@ def api_get_movie_by_id(id):
         ), 200
 
 
-@movies_api_v1.route('/countries', methods=['GET'])
+@trainer_api_v1.route('/countries', methods=['GET'])
 def api_get_movies_by_country():
     try:
         countries = request.args.getlist('countries')
@@ -110,7 +105,7 @@ def api_get_movies_by_country():
         return jsonify(response_object), 400
 
 
-@movies_api_v1.route('/facet-search', methods=['GET'])
+@trainer_api_v1.route('/facet-search', methods=['GET'])
 def api_search_movies_faceted():
     MOVIES_PER_PAGE = 20
 
@@ -138,7 +133,7 @@ def api_search_movies_faceted():
 
         response = {
             "movies": movies.get('movies'),
-            "facets":  {
+            "facets": {
                 "runtime": movies.get('runtime'),
                 "rating": movies.get('rating')
             },
@@ -153,34 +148,14 @@ def api_search_movies_faceted():
         return jsonify({'error': str(e)}), 400
 
 
-@movies_api_v1.route('/comment', methods=["POST"])
-#@jwt_required
-def api_post_comment():
-    """
-    Posts a comment about a specific movie. Validates the user is logged in by
-    ensuring a valid JWT is provided
-    """
-    #claims = get_jwt_claims()
-    #user = User.from_claims(claims)
-    post_data = request.get_json()
-    try:
-        movie_id = expect(post_data.get('movie_id'), str, 'movie_id')
-        comment = expect(post_data.get('comment'), str, 'comment')
-        add_comment(movie_id, user, comment, datetime.now())
-        updated_comments = get_movie(movie_id).get('comments')
-        return jsonify({"comments": updated_comments}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-
-@movies_api_v1.route('/comment', methods=["PUT"])
+@trainer_api_v1.route('/comment', methods=["PUT"])
 #@jwt_required
 def api_update_comment():
     """
     Updates a user comment. Validates the user is logged in by ensuring a
     valid JWT is provided
     """
-#    claims = get_jwt_claims()
+    #    claims = get_jwt_claims()
     user_email = "jane.doe@example.com"
     post_data = request.get_json()
     try:
@@ -199,13 +174,13 @@ def api_update_comment():
         return jsonify({'error': str(e)}), 400
 
 
-@movies_api_v1.route('/comment', methods=["DELETE"])
+@trainer_api_v1.route('/comment', methods=["DELETE"])
 #@jwt_required
 def api_delete_comment():
     """
     Delete a comment. Requires a valid JWT
     """
-#    claims = get_jwt_claims()
+    #    claims = get_jwt_claims()
     user_email = "jane.doe@example.com"
     post_data = request.get_json()
     try:
