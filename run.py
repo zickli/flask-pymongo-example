@@ -13,4 +13,4 @@ if __name__ == "__main__":
     app.config['DEBUG'] = True
     app.config['MONGO_URI'] = config['PROD']['DB_URI']
 
-    app.run()
+    app.run(host='0.0.0.0', port=5000)

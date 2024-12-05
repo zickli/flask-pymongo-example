@@ -12,9 +12,8 @@ from iot.api.trainer import trainer_api_v1
 
 class MongoJsonEncoder(JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.strftime("%Y-%m-%d %H:%M:%S")
         if isinstance(obj, ObjectId):
+            print("RRRUNRUNRUNRUNRUNRU")
             return str(obj)
         return json_util.default(obj, json_util.CANONICAL_JSON_OPTIONS)
 
@@ -28,7 +27,7 @@ def create_app():
                 template_folder=TEMPLATE_FOLDER,
                 )
     CORS(app)
-    app.json_encoder = MongoJsonEncoder
+    app.json_provider_class = MongoJsonEncoder
     app.register_blueprint(trainer_api_v1)
 
     return app
