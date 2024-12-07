@@ -29,8 +29,6 @@ def api_upload():
     record["device_id"] = device_id
     record["start_date"] = datetime.now()
 
-    print(record)
-
     insert_record_to_motions(record)
 
-    return "motion inserted", 200
+    return "succed", 200

@@ -51,6 +51,8 @@ def parse_device_data(data):
     first_line = lines[0].split(",")
     device_id = int(first_line[0])
     total_samples = int(first_line[1])
+
+    assert len(first_line) == 2
     
     sensors = {
         "acc_x": [],
@@ -64,6 +66,7 @@ def parse_device_data(data):
     
     for line in lines[1:]:
         values = list(map(float, line.split(",")))
+        assert len(values) == 7
         sensors["acc_x"].append(values[0])
         sensors["acc_y"].append(values[1])
         sensors["acc_z"].append(values[2])
