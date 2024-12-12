@@ -15,6 +15,8 @@ import pymongo
 from pymongo.errors import DuplicateKeyError, OperationFailure
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
+import csv
+import io
 
 
 def get_db():
@@ -44,7 +46,41 @@ def insert_record_to_motions(record):
     db.motions.insert_one(record)
 
 
-def parse_device_data(data):
+def get_lastest_plan(device_id):
+    lastest_plan = db.plans.find({"device_id": device_id}).sort("date", -1).limit(1)
+
+    plan_list = list(lastest_plan)
+
+    if len(plan_list) == 0:
+        return None
+    
+    plan = plan_list[0]
+    print(plan)
+    return plan
+
+
+def plan_to_csv(plan):
+    csv_buffer = io.StringIO()
+    writer = csv.writer(csv_buffer)
+    
+    writer.writerow([plan['plan_id'], len(plan['exercises'])])
+    
+    for exercise in plan['exercises']:
+        writer.writerow([
+            exercise['exercise_type'],
+            exercise['weight'],
+            exercise['sets'],
+            exercise['reps'],
+            exercise['rest_time']
+        ])
+    
+    csv_string = csv_buffer.getvalue()
+    csv_buffer.close()
+
+    return csv_string
+
+
+def parse_motion_data(data):
     data_str = data.decode('utf-8')
     lines = data_str.strip().splitlines()
     
@@ -76,3 +112,11 @@ def parse_device_data(data):
         sensors["timestamp"].append(values[6])
     
     return device_id, sensors
+
+def parse_device_id(data):
+    data_str = data.decode('utf-8')
+    try:
+        device_id = int(data_str.strip())
+    except:
+        device_id = 1
+    return device_id
