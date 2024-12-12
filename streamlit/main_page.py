@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
+from datetime import datetime
+import uuid
 uri = r"mongodb+srv://zijiel18:zijiel18@iot.uel8j.mongodb.net/?retryWrites=true&w=majority&appName=IoT"
 
 
@@ -29,6 +31,9 @@ def main_page():
 
 # Page to create a training plan
 def create_training_plan():
+    client = pymongo.MongoClient(uri)
+    db = client.spt
+
     st.title("Create a New Training Plan")
 
     # Placeholder for the training plan creation form (reusing your previous code)
@@ -75,6 +80,16 @@ def create_training_plan():
         st.success("All training plans have been successfully saved!")
         st.write("Your training plans:")
         st.json(st.session_state.training_plans)
+
+        plan_record = {
+            "plan_id": "plan_" + uuid.uuid4().hex[:10],
+            "device_id": 1,
+            "date": datetime.now(),
+            "exercises": st.session_state.training_plans
+        }
+
+        db.plans.insert_one(plan_record)
+
 
 # Page to view training records
 def view_training_records():
