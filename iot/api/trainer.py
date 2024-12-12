@@ -34,10 +34,11 @@ def api_upload():
     return "succed", 200
 
 
-@trainer_api_v1.route('/plan', methods=['GET'])
+@trainer_api_v1.route('/plan', methods=['POST'])
 def api_plan():
     data = request.data
     device_id = parse_device_id(data)
+    print("device_id", device_id)
 
     plan = get_lastest_plan(device_id)
 

@@ -61,7 +61,7 @@ def get_lastest_plan(device_id):
 
 def plan_to_csv(plan):
     csv_buffer = io.StringIO()
-    writer = csv.writer(csv_buffer)
+    writer = csv.writer(csv_buffer, lineterminator=',')
     
     writer.writerow([plan['plan_id'], len(plan['exercises'])])
     
