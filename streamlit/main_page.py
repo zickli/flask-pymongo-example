@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 from datetime import datetime
 import uuid
+from datetime import datetime, timedelta
+
 uri = r"mongodb+srv://zijiel18:zijiel18@iot.uel8j.mongodb.net/?retryWrites=true&w=majority&appName=IoT"
 
 
@@ -91,69 +93,68 @@ def create_training_plan():
         db.plans.insert_one(plan_record)
 
 
-# Page to view training records
 def view_training_records():
     st.title("View Your Training Records")
 
-    # Placeholder for dummy training records (this would be pulled from a database in the real application)
-    dummy_records = [
-        {"exercise_type": "Squats", "weight": 60, "sets": 5, "reps": 10, "rest_time": 30},
-        {"exercise_type": "Bench Press", "weight": 40, "sets": 4, "reps": 12, "rest_time": 30},
-    ]
-
-    if dummy_records:  # Replace with actual data from your database
-        for i, record in enumerate(dummy_records, start=1):
-            st.write(f"**Record {i}:**")
-            st.json(record)
-    else:
-        st.info("No training records found.")
-    
     client = pymongo.MongoClient(uri)
     db = client.spt
-    cursor = db.motions.find().sort('start_date', -1).skip(3).limit(1)  # 跳过第一个，限制返回一个文档
-    result = list(cursor)  # 转为列表
-    if result:
-        doc = result[0]  # 提取第二大的文档
-    else:
-        print("No data found.")
 
-    n = 3
-    time = doc['timestamp']
-    acc_x = doc['acc_x']
-    acc_y = doc['acc_y']
-    acc_z = doc['acc_z']
-    total_acc = np.sqrt(np.array(acc_x)**2 + np.array(acc_y)**2 + np.array(acc_z)**2)
+    
+    latest_record = db.motions.find().sort('start_date', -1).limit(1)
+    latest_record = list(latest_record)
+    if not latest_record:
+        st.write("No records found.")
+        return
 
-    peaks, _ = find_peaks(total_acc)
-    peak_times = [time[i] for i in peaks]
-    peak_values = [total_acc[i] for i in peaks]
+    device_number = latest_record[0]['device_id']
+    plan_id = latest_record[0]['plan_id']
+    records = db.motions.find({
+        'device_id': device_number,
+        'plan_id': plan_id
+    }).sort('start_date', 1)
 
-    # 获取最大的三个峰值及其时间
-    sorted_indices = np.argsort(peak_values)[-n:]
-    top_peak_times = [peak_times[i] for i in sorted_indices]
-    top_peak_values = [peak_values[i] for i in sorted_indices]
+    for record in records:
+        n = record['reps']
+        time = record['timestamp']
+        
+        time_str = (record["start_date"]-timedelta(hours=8)).strftime(r"%Y-%m-%d %H:%M:%S")
+        acc_x = record['acc_x']
+        acc_y = record['acc_y']
+        acc_z = record['acc_z']
 
-    # 按时间排序
-    sorted_peaks = sorted(zip(top_peak_times, top_peak_values), key=lambda x: x[0])
-    top_peak_times, top_peak_values = zip(*sorted_peaks)
+        total_acc = np.sqrt(np.array(acc_x)**2 + np.array(acc_y)**2 + np.array(acc_z)**2)
 
-    gaps = []
-    for i in range(len(sorted_peaks)):
-        if i == 0:
-            print(sorted_peaks[i][0])
-            gaps.append(sorted_peaks[i][0]/1000) 
-        else:
-            print(sorted_peaks[i][0]-sorted_peaks[i-1][0])
-            gaps.append((sorted_peaks[i][0]-sorted_peaks[i-1][0])/1000)
+        peaks, _ = find_peaks(total_acc,distance=30)
+        peak_times = [time[i] for i in peaks]
+        peak_values = [total_acc[i] for i in peaks]
 
-    plt.bar(range(1,n+1),gaps)
-    ticks = []
-    for i in range(1,n+1):
-        ticks.append('rep '+str(i))
-    plt.xticks(range(1,n+1),ticks)
-    st.pyplot(plt)
+        sorted_indices = np.argsort(peak_values)[-n:]
+        top_peak_times = [peak_times[i] for i in sorted_indices]
+        top_peak_values = [peak_values[i] for i in sorted_indices]
+
+        sorted_peaks = sorted(zip(top_peak_times, top_peak_values), key=lambda x: x[0])
+        top_peak_times, top_peak_values = zip(*sorted_peaks) if sorted_peaks else ([], [])
+
+        gaps = []
+        for i in range(len(sorted_peaks)):
+            if i == 0:
+                gaps.append(sorted_peaks[i][0] / 1000)  
+            else:
+                gaps.append((sorted_peaks[i][0] - sorted_peaks[i - 1][0]) / 1000)
+
+        set_num = record["set_idx"]
+        st.write(f"### Plan ID: {plan_id},{record['exercise_name']}, Set:{set_num}")
+        st.write(f"Finished at: {time_str}")
+        plt.figure(figsize=(8, 4))
+        plt.bar(range(1, n + 1), gaps, color='skyblue')
+        ticks = [f'Rep {i}' for i in range(1, n + 1)]
+        plt.xticks(range(1, n + 1), ticks)
+        plt.xlabel('Repetitions')
+        plt.ylabel('Time(seconds)')
+        st.pyplot(plt)
 
 
+    client.close()
 
 # Run the app
 if __name__ == "__main__":
